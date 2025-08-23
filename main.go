@@ -179,10 +179,10 @@ func main() {
 		data.Set("c", ch.ID)    // Channel ID
 		if enabled && !ch.Enabled {
 			data.Set("a", "1") // Enable channel with 1
-			fmt.Println("Enabling channel: ", ch.Title)
+			fmt.Println("IPTV: Enabling channel: ", ch.Title)
 		} else if !enabled {
 			data.Set("a", "0") // Disable channel with 0
-			fmt.Println("Disabling channel: ", ch.Title)
+			fmt.Println("IPTV: Disabling channel: ", ch.Title)
 		}
 
 		req, err := http.NewRequest("POST", iptvAPIAddress, strings.NewReader(data.Encode()))
@@ -204,15 +204,19 @@ func main() {
 	// 1. Refresh the NO_EPG playlist
 	// 2. Get the current list of channels and store it.
 	// 3. Update tigers channels: active (true), group (NO_EPG), xmltv file (xteve dummy) and xmltv channel (180 mins)
+	fmt.Println("xTeVe: Get initial config...")
 	xConfigA := getXteveConfig()
 	time.Sleep(2 * time.Second) // Wait for xTeVe
 
+	fmt.Println("xTeVe: Update M3U playlist...")
 	updateM3uFile(xConfigA)
 	time.Sleep(2 * time.Second) // Wait for xTeVe
 
+	fmt.Println("xTeVe: Get updated config...")
 	xConfigB := getXteveConfig()
 	time.Sleep(2 * time.Second) // Wait for xTeVe
 
+	fmt.Println("xTeVe: Enable channel mapping...")
 	updateMapping(xConfigB)
 	time.Sleep(2 * time.Second) // Wait for xTeVe
 
@@ -242,7 +246,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, "Error: could not find task with Key: \"************\"")
 		os.Exit(1)
 	}
-	fmt.Println("Triggering Guide Refresh")
+	fmt.Println("Emby: Triggering Guide Refresh")
 	triggerTaskURL := fmt.Sprintf("%s/emby/ScheduledTasks/Running/%s?api_key=%s", embyAPIAddress, refreshGuideID, embyAPIKey)
 	response, err = http.Post(triggerTaskURL, "", nil)
 	if err != nil {
@@ -314,7 +318,7 @@ func updateMapping(xConfig xteveConfig) {
 			value.XActive = true
 
 			xConfig.Xepg.EpgMapping[key] = value
-			fmt.Printf("Enabling channel: %s\n", value.Name)
+			fmt.Printf("xTeVe: Enabling channel: %s\n", value.Name)
 		}
 	}
 
