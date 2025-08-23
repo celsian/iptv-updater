@@ -1,0 +1,20 @@
+Notes:
+1. Run every day before the first possible game. (Cron)
+
+2. Interact with IPTV
+  a. Make REST API request for channel list search term mlb for playlist NO_EPG
+  c. Parse response to find all enabled channels that arent US MLB Network (H) & US MLB San Diego Padres (A)
+  b. Parse response to find and enable all Tigers games
+
+3. Interact with XTeve
+  a. Update NO_EPG list via Websocket request:
+    message: {"files":{"m3u":{"THEIDOFTHEM3UFILEINXTEVE":{"name":"Backup LA","description":"","file.source":"https://endpoint","tuner":1}}},"cmd":"updateFileM3U"}
+  b. Get Server Config
+    message: {"cmd":"getServerConfig"}
+  c. Extract epgMapping
+  d. Modify and Send epgMapping to change the x-group-title, x-mapping and x-xmltv-file for the new channels
+
+4. Interact with Emby API (https://dev.emby.media/reference/RestAPI/LiveTvService/getLivetvGuideinfo.html)
+  a. Get Refresh Guide Data scheduled task ID
+  b. Use the ID to run the task
+
