@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/gorilla/websocket"
@@ -204,12 +205,16 @@ func main() {
 	// 2. Get the current list of channels and store it.
 	// 3. Update tigers channels: active (true), group (NO_EPG), xmltv file (xteve dummy) and xmltv channel (180 mins)
 	xConfigA := getXteveConfig()
+	time.Sleep(2 * time.Second) // Wait for xTeVe
 
 	updateM3uFile(xConfigA)
+	time.Sleep(2 * time.Second) // Wait for xTeVe
 
 	xConfigB := getXteveConfig()
+	time.Sleep(2 * time.Second) // Wait for xTeVe
 
 	updateMapping(xConfigB)
+	time.Sleep(2 * time.Second) // Wait for xTeVe
 
 	// 33333333333333333333333333333333333333333333333333333333333333333333
 	// Interact with Emby API
