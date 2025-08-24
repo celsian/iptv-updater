@@ -201,11 +201,11 @@ func main() {
 		data.Set("c", ch.ID)    // Channel ID
 		if enabled && !ch.Enabled {
 			data.Set("a", "1") // Enable channel with 1
-			slog.Info("IPTV: Enabling channel: ", ch.Title)
+			slog.Info(fmt.Sprintf("IPTV: Enabling channel: %s", ch.Title))
 			counter++
 		} else if !enabled {
 			data.Set("a", "0") // Disable channel with 0
-			slog.Info("IPTV: Disabling channel: ", ch.Title)
+			slog.Info(fmt.Sprintf("IPTV: Disabling channel: %s", ch.Title))
 			counter++
 		}
 
@@ -347,7 +347,7 @@ func updateMapping(xConfig xteveConfig) {
 			value.XActive = true
 
 			xConfig.Xepg.EpgMapping[key] = value
-			slog.Info("xTeVe: Enabling channel: %s", value.Name)
+			slog.Info(fmt.Sprintf("xTeVe: Enabling channel: %s", value.Name))
 		}
 	}
 
