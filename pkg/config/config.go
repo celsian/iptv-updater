@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
+	"runtime"
 
 	"github.com/celsian/iptv-updater/pkg/utils"
 	"github.com/go-playground/validator"
@@ -23,8 +25,15 @@ func Must() *Config {
 	logFile := utils.SetupLogging()
 	defer logFile.Close()
 
+	// Find where the binary is located
+	_, b, _, _ := runtime.Caller(0)
+	exeDir := filepath.Dir(filepath.Dir(filepath.Dir(b)))
+	fmt.Println("EXE DIR: ", exeDir)
+
+	envPath := filepath.Join(exeDir, ".env")
+
 	// Load environment file
-	err := godotenv.Load()
+	err := godotenv.Load(envPath)
 	if err != nil {
 		slog.Error(fmt.Sprintf("Error loading .env file: %v", err))
 	}
