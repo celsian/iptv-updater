@@ -194,11 +194,7 @@ func main() {
 		}
 	}
 
-	if len(channelMap) == 0 {
-		slog.Error("No channels to update.")
-		os.Exit(1)
-	}
-
+	counter := 0
 	for ch, enabled := range channelMap {
 		data.Set("jxt", "4")
 		data.Set("jxw", "s")
@@ -207,9 +203,11 @@ func main() {
 		if enabled && !ch.Enabled {
 			data.Set("a", "1") // Enable channel with 1
 			slog.Info("IPTV: Enabling channel: ", ch.Title)
+			counter++
 		} else if !enabled {
 			data.Set("a", "0") // Disable channel with 0
 			slog.Info("IPTV: Disabling channel: ", ch.Title)
+			counter++
 		}
 
 		req, err := http.NewRequest("POST", iptvAPIAddress, strings.NewReader(data.Encode()))
@@ -226,7 +224,7 @@ func main() {
 		defer resp.Body.Close()
 	}
 
-	if len(channelMap) == 0 {
+	if counter == 0 {
 		slog.Info("IPTV: No channels to change, exiting.")
 		os.Exit(0)
 	}
