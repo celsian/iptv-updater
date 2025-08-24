@@ -28,8 +28,6 @@ func Must() *Config {
 	// Find where the binary is located
 	_, b, _, _ := runtime.Caller(0)
 	exeDir := filepath.Dir(filepath.Dir(filepath.Dir(b)))
-	fmt.Println("EXE DIR: ", exeDir)
-
 	envPath := filepath.Join(exeDir, ".env")
 
 	// Load environment file
