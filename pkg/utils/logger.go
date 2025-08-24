@@ -1,4 +1,4 @@
-package main
+package utils
 
 import (
 	"fmt"
@@ -38,5 +38,13 @@ func PanicOnErr(err error) {
 		e := fmt.Errorf("%v", err)
 		slog.Error(fmt.Sprintf("%v", e))
 		panic(e)
+	}
+}
+
+func PrintSensitive(name, value string) {
+	if value != "" {
+		slog.Info(fmt.Sprintf("%s: present", name))
+	} else {
+		slog.Info(fmt.Sprintf("%s: >>>>>>>>>>>>>>>>>>>> MISSING <<<<<<<<<<<<<<<<<<<<", name))
 	}
 }
