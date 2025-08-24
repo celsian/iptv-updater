@@ -124,6 +124,8 @@ func main() {
 	// 11111111111111111111111111111111111111111111111111111111111111111111
 	// Interact with IPTV
 	// Get NO_EPG MLB channels
+	slog.Info("Querying IPTV for channels...")
+
 	iptvClient := &http.Client{}
 	data := url.Values{}
 	data.Set("jxt", "4")
@@ -190,6 +192,11 @@ func main() {
 		if strings.Contains(strings.ToLower(ch.Title), "tigers") {
 			channelMap[ch] = true
 		}
+	}
+
+	if len(channelMap) == 0 {
+		slog.Error("No channels to update.")
+		os.Exit(1)
 	}
 
 	for ch, enabled := range channelMap {
