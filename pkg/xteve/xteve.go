@@ -90,7 +90,7 @@ func Update(cfg *config.Config) {
 	x.getXteveConfig()
 	time.Sleep(2 * time.Second) // Wait for xTeVe
 
-	slog.Info("xTeVe: Enable channel mapping...")
+	slog.Info("xTeVe: Update channel mapping...")
 	x.updateMapping()
 	time.Sleep(2 * time.Second) // Wait for xTeVe
 }

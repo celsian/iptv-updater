@@ -11,12 +11,12 @@ import (
 )
 
 type Config struct {
-	IptvAPIAddress        string
-	IptvUID               string
-	IptvPass              string
-	XteveWebSocketAddress string
-	EmbyAPIAddress        string
-	EmbyAPIKey            string
+	IptvAPIAddress        string `validate:"required"`
+	IptvUID               string `validate:"required"`
+	IptvPass              string `validate:"required"`
+	XteveWebSocketAddress string `validate:"required"`
+	EmbyAPIAddress        string `validate:"required"`
+	EmbyAPIKey            string `validate:"required"`
 }
 
 func Must() *Config {
@@ -50,5 +50,7 @@ func validate(cfg *Config) error {
 	if err := validate.Struct(cfg); err != nil {
 		return fmt.Errorf("invalid configuration: %v", err)
 	}
+
+	slog.Info("Configuration validated, starting task.")
 	return nil
 }
