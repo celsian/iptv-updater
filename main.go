@@ -112,14 +112,14 @@ func main() {
 	embyAPIAddress = os.Getenv("EMBY_API_ADDRESS")
 	embyAPIKey = os.Getenv("EMBY_API_KEY")
 
-	slog.Info("####### Configuration: #######\n")
-	slog.Info("iptvAPIAddress: %s\n", iptvAPIAddress)
+	slog.Info("####### Configuration: #######")
+	slog.Info("iptvAPIAddress: %s", iptvAPIAddress)
 	printSensitive("iptvUID", iptvUID)
 	printSensitive("iptvPass", iptvPass)
-	slog.Info("xteveWebSocketAddress: %s\n", xteveWebSocketAddress)
+	slog.Info("xteveWebSocketAddress: %s", xteveWebSocketAddress)
 	printSensitive("embyAPIKey", embyAPIKey)
-	slog.Info("embyAPIAddress: %s\n", embyAPIAddress)
-	slog.Info("##############################\n")
+	slog.Info("embyAPIAddress: %s", embyAPIAddress)
+	slog.Info("##############################")
 
 	// 11111111111111111111111111111111111111111111111111111111111111111111
 	// Interact with IPTV
@@ -225,7 +225,7 @@ func main() {
 	}
 
 	if counter == 0 {
-		slog.Info("IPTV: No channels to change, exiting.")
+		slog.Info("Exiting: IPTV: No channels to change.")
 		os.Exit(0)
 	}
 
@@ -258,7 +258,7 @@ func main() {
 	scheduledTasksURL := fmt.Sprintf("%s/emby/ScheduledTasks?api_key=%s", embyAPIAddress, embyAPIKey)
 	response, err := http.Get(scheduledTasksURL)
 	if err != nil {
-		slog.Error("Emby: Error while getting ScheduledTasks: %v\n", err)
+		slog.Error("Emby: Error while getting ScheduledTasks: %v", err)
 		os.Exit(1)
 	}
 	defer response.Body.Close()
@@ -280,11 +280,11 @@ func main() {
 	triggerTaskURL := fmt.Sprintf("%s/emby/ScheduledTasks/Running/%s?api_key=%s", embyAPIAddress, refreshGuideID, embyAPIKey)
 	response, err = http.Post(triggerTaskURL, "", nil)
 	if err != nil {
-		slog.Error("Emby: Error while triggering Refresh Guide: %v\n", err)
+		slog.Error("Emby: Error while triggering Refresh Guide: %v", err)
 		os.Exit(1)
 	}
 
-	slog.Info("Channels selected, added and guide refreshed. Ready to watch.")
+	slog.Info("Exiting: Task Complete. Channels selected, added and guide refreshed. Ready to watch.")
 }
 
 func getXteveConfig() xteveConfig {
@@ -348,7 +348,7 @@ func updateMapping(xConfig xteveConfig) {
 			value.XActive = true
 
 			xConfig.Xepg.EpgMapping[key] = value
-			slog.Info("xTeVe: Enabling channel: %s\n", value.Name)
+			slog.Info("xTeVe: Enabling channel: %s", value.Name)
 		}
 	}
 
@@ -381,8 +381,8 @@ func updateMapping(xConfig xteveConfig) {
 
 func printSensitive(name, value string) {
 	if value != "" {
-		slog.Info("%s: present\n", name)
+		slog.Info("%s: present", name)
 	} else {
-		slog.Info("%s: >>>>>>>>>>>>>>>>>>>> MISSING <<<<<<<<<<<<<<<<<<<<\n", name)
+		slog.Info("%s: >>>>>>>>>>>>>>>>>>>> MISSING <<<<<<<<<<<<<<<<<<<<", name)
 	}
 }
