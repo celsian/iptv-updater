@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -12,6 +13,8 @@ import (
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/gorilla/websocket"
+	"github.com/joho/godotenv"
+	"golang.org/x/exp/slog"
 )
 
 type Channel struct {
@@ -83,23 +86,40 @@ type ScheduleTask struct {
 }
 
 var (
-	iptvAPIAddress        string = os.Getenv("IPTV_API_ADDRESS")
-	iptvUID               string = os.Getenv("IPTV_UID")
-	iptvPass              string = os.Getenv("IPTV_PASS")
-	xteveWebSocketAddress string = os.Getenv("XTEVE_WEB_SOCKET_ADDRESS")
-	embyAPIAddress        string = os.Getenv("EMBY_API_ADDRESS")
-	embyAPIKey            string = os.Getenv("EMBY_API_KEY")
+	iptvAPIAddress        string
+	iptvUID               string
+	iptvPass              string
+	xteveWebSocketAddress string
+	embyAPIAddress        string
+	embyAPIKey            string
 )
 
 func main() {
-	fmt.Printf("####### Configuration: #######\n")
-	fmt.Printf("iptvAPIAddress: %s\n", iptvAPIAddress)
+	logFile := SetupLogging()
+	defer logFile.Close()
+
+	// Load environment file
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatalf("Error loading .env file: %v", err)
+	}
+
+	// Build config from environment
+	iptvAPIAddress = os.Getenv("IPTV_API_ADDRESS")
+	iptvUID = os.Getenv("IPTV_UID")
+	iptvPass = os.Getenv("IPTV_PASS")
+	xteveWebSocketAddress = os.Getenv("XTEVE_WEB_SOCKET_ADDRESS")
+	embyAPIAddress = os.Getenv("EMBY_API_ADDRESS")
+	embyAPIKey = os.Getenv("EMBY_API_KEY")
+
+	slog.Info("####### Configuration: #######\n")
+	slog.Info("iptvAPIAddress: %s\n", iptvAPIAddress)
 	printSensitive("iptvUID", iptvUID)
 	printSensitive("iptvPass", iptvPass)
-	fmt.Printf("xteveWebSocketAddress: %s\n", xteveWebSocketAddress)
+	slog.Info("xteveWebSocketAddress: %s\n", xteveWebSocketAddress)
 	printSensitive("embyAPIKey", embyAPIKey)
-	fmt.Printf("embyAPIAddress: %s\n", embyAPIAddress)
-	fmt.Printf("##############################\n")
+	slog.Info("embyAPIAddress: %s\n", embyAPIAddress)
+	slog.Info("##############################\n")
 
 	// 11111111111111111111111111111111111111111111111111111111111111111111
 	// Interact with IPTV
@@ -113,20 +133,20 @@ func main() {
 
 	req, err := http.NewRequest("POST", iptvAPIAddress, strings.NewReader(data.Encode()))
 	if err != nil {
-		panic(err)
+		PanicOnErr(err)
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.Header.Set("Cookie", fmt.Sprintf("uid=%s; pass=%s", iptvUID, iptvPass))
 
 	resp, err := iptvClient.Do(req)
 	if err != nil {
-		panic(err)
+		PanicOnErr(err)
 	}
 	defer resp.Body.Close()
 
 	var root map[string]interface{}
 	if err := json.NewDecoder(resp.Body).Decode(&root); err != nil {
-		panic(err)
+		PanicOnErr(err)
 	}
 
 	fs := root["Fs"].([]interface{})
@@ -137,7 +157,7 @@ func main() {
 
 	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
 	if err != nil {
-		panic(err)
+		PanicOnErr(err)
 	}
 
 	var channels []Channel
@@ -179,22 +199,22 @@ func main() {
 		data.Set("c", ch.ID)    // Channel ID
 		if enabled && !ch.Enabled {
 			data.Set("a", "1") // Enable channel with 1
-			fmt.Println("IPTV: Enabling channel: ", ch.Title)
+			slog.Info("IPTV: Enabling channel: ", ch.Title)
 		} else if !enabled {
 			data.Set("a", "0") // Disable channel with 0
-			fmt.Println("IPTV: Disabling channel: ", ch.Title)
+			slog.Info("IPTV: Disabling channel: ", ch.Title)
 		}
 
 		req, err := http.NewRequest("POST", iptvAPIAddress, strings.NewReader(data.Encode()))
 		if err != nil {
-			panic(err)
+			PanicOnErr(err)
 		}
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 		req.Header.Set("Cookie", fmt.Sprintf("uid=%s; pass=%s", iptvUID, iptvPass))
 
 		resp, err := iptvClient.Do(req)
 		if err != nil {
-			panic(err)
+			PanicOnErr(err)
 		}
 		defer resp.Body.Close()
 	}
@@ -204,19 +224,19 @@ func main() {
 	// 1. Refresh the NO_EPG playlist
 	// 2. Get the current list of channels and store it.
 	// 3. Update tigers channels: active (true), group (NO_EPG), xmltv file (xteve dummy) and xmltv channel (180 mins)
-	fmt.Println("xTeVe: Get initial config...")
+	slog.Info("xTeVe: Get initial config...")
 	xConfigA := getXteveConfig()
 	time.Sleep(2 * time.Second) // Wait for xTeVe
 
-	fmt.Println("xTeVe: Update M3U playlist...")
+	slog.Info("xTeVe: Update M3U playlist...")
 	updateM3uFile(xConfigA)
 	time.Sleep(2 * time.Second) // Wait for xTeVe
 
-	fmt.Println("xTeVe: Get updated config...")
+	slog.Info("xTeVe: Get updated config...")
 	xConfigB := getXteveConfig()
 	time.Sleep(2 * time.Second) // Wait for xTeVe
 
-	fmt.Println("xTeVe: Enable channel mapping...")
+	slog.Info("xTeVe: Enable channel mapping...")
 	updateMapping(xConfigB)
 	time.Sleep(2 * time.Second) // Wait for xTeVe
 
@@ -228,13 +248,13 @@ func main() {
 	scheduledTasksURL := fmt.Sprintf("%s/emby/ScheduledTasks?api_key=%s", embyAPIAddress, embyAPIKey)
 	response, err := http.Get(scheduledTasksURL)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error while getting ScheduledTasks: %v\n", err)
+		slog.Error("Emby: Error while getting ScheduledTasks: %v\n", err)
 		os.Exit(1)
 	}
 	defer response.Body.Close()
 
 	if err := json.NewDecoder(response.Body).Decode(&scheduledTasks); err != nil {
-		panic(err)
+		PanicOnErr(err)
 	}
 	for _, task := range scheduledTasks {
 		if task.Key == "RefreshGuide" {
@@ -243,38 +263,38 @@ func main() {
 		}
 	}
 	if refreshGuideID == "" {
-		fmt.Fprintln(os.Stderr, "Error: could not find task with Key: \"************\"")
+		slog.Error("Emby: Error: could not find task with Key: \"************\"")
 		os.Exit(1)
 	}
-	fmt.Println("Emby: Triggering Guide Refresh")
+	slog.Info("Emby: Triggering Guide Refresh")
 	triggerTaskURL := fmt.Sprintf("%s/emby/ScheduledTasks/Running/%s?api_key=%s", embyAPIAddress, refreshGuideID, embyAPIKey)
 	response, err = http.Post(triggerTaskURL, "", nil)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error while triggering Refresh Guide: %v\n", err)
+		slog.Error("Emby: Error while triggering Refresh Guide: %v\n", err)
 		os.Exit(1)
 	}
 
-	fmt.Println("Channels selected, added and guide refreshed. Ready to watch.")
+	slog.Info("Channels selected, added and guide refreshed. Ready to watch.")
 }
 
 func getXteveConfig() xteveConfig {
 	ws, _, err := websocket.DefaultDialer.Dial(xteveWebSocketAddress, nil)
 	if err != nil {
-		panic(err)
+		PanicOnErr(err)
 	}
 	err = ws.WriteMessage(websocket.TextMessage, []byte(`{"cmd":"getServerConfig"}`))
 	if err != nil {
-		panic(err)
+		PanicOnErr(err)
 	}
 	_, wsResp, err := ws.ReadMessage()
 	if err != nil {
-		panic(err)
+		PanicOnErr(err)
 	}
 	ws.Close() // Close first connection
 
 	var xConfig xteveConfig
 	if err := json.Unmarshal(wsResp, &xConfig); err != nil {
-		panic(err)
+		PanicOnErr(err)
 	}
 
 	return xConfig
@@ -295,16 +315,16 @@ func updateM3uFile(xConfig xteveConfig) {
 	}
 	updateM3uPayload, err := json.Marshal(updateM3u)
 	if err != nil {
-		panic(err)
+		PanicOnErr(err)
 	}
 
 	ws, _, err := websocket.DefaultDialer.Dial(xteveWebSocketAddress, nil)
 	if err != nil {
-		panic(err)
+		PanicOnErr(err)
 	}
 	err = ws.WriteMessage(websocket.TextMessage, updateM3uPayload)
 	if err != nil {
-		panic(err)
+		PanicOnErr(err)
 	}
 	ws.Close()
 }
@@ -318,7 +338,7 @@ func updateMapping(xConfig xteveConfig) {
 			value.XActive = true
 
 			xConfig.Xepg.EpgMapping[key] = value
-			fmt.Printf("xTeVe: Enabling channel: %s\n", value.Name)
+			slog.Info("xTeVe: Enabling channel: %s\n", value.Name)
 		}
 	}
 
@@ -332,27 +352,27 @@ func updateMapping(xConfig xteveConfig) {
 	enc := json.NewEncoder(buf)
 	enc.SetEscapeHTML(false)
 	if err := enc.Encode(payload); err != nil {
-		panic(err)
+		PanicOnErr(err)
 	}
 	saveMappingMessage := buf.Bytes()
 
 	ws, _, err := websocket.DefaultDialer.Dial(xteveWebSocketAddress, nil)
 	if err != nil {
-		panic(err)
+		PanicOnErr(err)
 	}
 	defer ws.Close()
 
 	err = ws.WriteMessage(websocket.TextMessage, saveMappingMessage)
 
 	if err != nil {
-		panic(err)
+		PanicOnErr(err)
 	}
 }
 
 func printSensitive(name, value string) {
 	if value != "" {
-		fmt.Printf("%s: present\n", name)
+		slog.Info("%s: present\n", name)
 	} else {
-		fmt.Printf("%s: >>>>>>>>>>>>>>>>>>>> MISSING <<<<<<<<<<<<<<<<<<<<\n", name)
+		slog.Info("%s: >>>>>>>>>>>>>>>>>>>> MISSING <<<<<<<<<<<<<<<<<<<<\n", name)
 	}
 }
