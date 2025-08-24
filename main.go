@@ -283,7 +283,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	slog.Info("Exiting: Task Complete. Channels selected, added and guide refreshed. Ready to watch.")
+	slog.Info("Exiting: Task Complete. Channels selected and added, guide refreshed. Ready to watch.")
 }
 
 func getXteveConfig() xteveConfig {
