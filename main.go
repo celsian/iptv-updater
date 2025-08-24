@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -101,7 +100,7 @@ func main() {
 	// Load environment file
 	err := godotenv.Load()
 	if err != nil {
-		log.Fatalf("Error loading .env file: %v", err)
+		slog.Error(fmt.Sprintf("Error loading .env file: %v", err))
 	}
 
 	// Build config from environment
@@ -113,12 +112,12 @@ func main() {
 	embyAPIKey = os.Getenv("EMBY_API_KEY")
 
 	slog.Info("####### Configuration: #######")
-	slog.Info("iptvAPIAddress: %s", iptvAPIAddress)
+	slog.Info(fmt.Sprintf("iptvAPIAddress: %s", iptvAPIAddress))
 	printSensitive("iptvUID", iptvUID)
 	printSensitive("iptvPass", iptvPass)
-	slog.Info("xteveWebSocketAddress: %s", xteveWebSocketAddress)
+	slog.Info(fmt.Sprintf("xteveWebSocketAddress: %s", xteveWebSocketAddress))
 	printSensitive("embyAPIKey", embyAPIKey)
-	slog.Info("embyAPIAddress: %s", embyAPIAddress)
+	slog.Info(fmt.Sprintf("embyAPIAddress: %s", embyAPIAddress))
 	slog.Info("##############################")
 
 	// 11111111111111111111111111111111111111111111111111111111111111111111
@@ -258,7 +257,7 @@ func main() {
 	scheduledTasksURL := fmt.Sprintf("%s/emby/ScheduledTasks?api_key=%s", embyAPIAddress, embyAPIKey)
 	response, err := http.Get(scheduledTasksURL)
 	if err != nil {
-		slog.Error("Emby: Error while getting ScheduledTasks: %v", err)
+		slog.Error(fmt.Sprintf("Emby: Error while getting ScheduledTasks: %v", err))
 		os.Exit(1)
 	}
 	defer response.Body.Close()
@@ -280,7 +279,7 @@ func main() {
 	triggerTaskURL := fmt.Sprintf("%s/emby/ScheduledTasks/Running/%s?api_key=%s", embyAPIAddress, refreshGuideID, embyAPIKey)
 	response, err = http.Post(triggerTaskURL, "", nil)
 	if err != nil {
-		slog.Error("Emby: Error while triggering Refresh Guide: %v", err)
+		slog.Error(fmt.Sprintf("Emby: Error while triggering Refresh Guide: %v", err))
 		os.Exit(1)
 	}
 
@@ -381,8 +380,8 @@ func updateMapping(xConfig xteveConfig) {
 
 func printSensitive(name, value string) {
 	if value != "" {
-		slog.Info("%s: present", name)
+		slog.Info(fmt.Sprintf("%s: present", name))
 	} else {
-		slog.Info("%s: >>>>>>>>>>>>>>>>>>>> MISSING <<<<<<<<<<<<<<<<<<<<", name)
+		slog.Info(fmt.Sprintf("%s: >>>>>>>>>>>>>>>>>>>> MISSING <<<<<<<<<<<<<<<<<<<<", name))
 	}
 }
