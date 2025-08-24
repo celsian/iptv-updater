@@ -219,6 +219,11 @@ func main() {
 		defer resp.Body.Close()
 	}
 
+	if len(channelMap) == 0 {
+		slog.Info("IPTV: No channels to change, exiting.")
+		os.Exit(0)
+	}
+
 	// 22222222222222222222222222222222222222222222222222222222222222222222
 	// Interact with xTeVe
 	// 1. Refresh the NO_EPG playlist
