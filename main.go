@@ -11,7 +11,8 @@ import (
 
 func main() {
 	// Build config from environment
-	cfg := config.Must()
+	cfg, logFileCloser := config.Must()
+	defer logFileCloser()
 
 	// Interact with IPTV
 	iptv.Update(cfg)

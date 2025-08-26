@@ -21,9 +21,8 @@ type Config struct {
 	EmbyAPIKey            string `validate:"required"`
 }
 
-func Must() *Config {
+func Must() (*Config, func()) {
 	logFile := utils.SetupLogging()
-	defer logFile.Close()
 
 	// Find where the binary is located
 	_, b, _, _ := runtime.Caller(0)
@@ -48,7 +47,7 @@ func Must() *Config {
 	err = validate(cfg)
 	utils.PanicOnErr(err)
 
-	return cfg
+	return cfg, func() { logFile.Close() }
 }
 
 func validate(cfg *Config) error {
