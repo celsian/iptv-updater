@@ -15,7 +15,7 @@ func main() {
 	defer logFileCloser()
 
 	// Interact with IPTV
-	iptv.Update(cfg)
+	iptv.New(cfg).Update()
 
 	// Interact with xTeVe
 	xteve.Update(cfg)

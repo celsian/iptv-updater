@@ -20,38 +20,59 @@ type Channel struct {
 	Enabled bool
 }
 
-func Update(cfg *config.Config) {
-	// 11111111111111111111111111111111111111111111111111111111111111111111
-	// Interact with IPTV
-	// Get NO_EPG MLB channels
+type Iptv struct {
+	cfg        *config.Config
+	httpClient *http.Client
+}
+
+func New(cfg *config.Config) *Iptv {
+	return &Iptv{
+		cfg:        cfg,
+		httpClient: &http.Client{},
+	}
+}
+
+func (i *Iptv) Update() {
 	slog.Info("Querying IPTV for channels...")
 
-	iptvClient := &http.Client{}
-	data := url.Values{}
-	data.Set("jxt", "4")
-	data.Set("jxw", "sch")
-	data.Set("s", "NO_EPG")
-	data.Set("c", "MLB")
+	// Get NO_EPG MLB channels
+	data := url.Values{
+		"jxt": {"4"},
+		"jxw": {"sch"},
+		"s":   {"NO_EPG"},
+		"c":   {"MLB"},
+	}
 
-	req, err := http.NewRequest("POST", cfg.IptvAPIAddress, strings.NewReader(data.Encode()))
+	jsonBody := i.requestJson(data)
+
+	channels := i.parseChannels(jsonBody)
+
+	i.updateChannels(channels)
+}
+
+func (i *Iptv) requestJson(data url.Values) (jsonBody map[string]interface{}) {
+	req, err := http.NewRequest("POST", i.cfg.IptvAPIAddress, strings.NewReader(data.Encode()))
 	if err != nil {
 		utils.PanicOnErr(err)
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("Cookie", fmt.Sprintf("uid=%s; pass=%s", cfg.IptvUID, cfg.IptvPass))
+	req.Header.Set("Cookie", fmt.Sprintf("uid=%s; pass=%s", i.cfg.IptvUID, i.cfg.IptvPass))
 
-	resp, err := iptvClient.Do(req)
+	resp, err := i.httpClient.Do(req)
 	if err != nil {
 		utils.PanicOnErr(err)
 	}
 	defer resp.Body.Close()
 
-	var root map[string]interface{}
-	if err := json.NewDecoder(resp.Body).Decode(&root); err != nil {
+	if err := json.NewDecoder(resp.Body).Decode(&jsonBody); err != nil {
 		utils.PanicOnErr(err)
 	}
 
-	fs := root["Fs"].([]interface{})
+	return
+}
+
+func (i *Iptv) parseChannels(jsonBody map[string]interface{}) (channels []Channel) {
+	fs := jsonBody["Fs"].([]interface{})
 	second := fs[1].([]interface{})
 	nested := second[1].([]interface{})
 	after := nested[1].([]interface{})
@@ -61,8 +82,6 @@ func Update(cfg *config.Config) {
 	if err != nil {
 		utils.PanicOnErr(err)
 	}
-
-	var channels []Channel
 
 	// Each <li> is a channel entry
 	doc.Find("li").Each(func(i int, s *goquery.Selection) {
@@ -81,51 +100,40 @@ func Update(cfg *config.Config) {
 		}
 	})
 
+	return
+}
+
+func (i *Iptv) updateChannels(channels []Channel) {
 	var channelMap = map[Channel]bool{}
 
 	for _, ch := range channels {
-		if ch.Enabled {
-			if !(strings.Contains(ch.Title, "US MLB San Diego Padres") || strings.Contains(ch.Title, "US MLB Network")) {
-				channelMap[ch] = false
-			}
-		}
-		if strings.Contains(strings.ToLower(ch.Title), "tigers") {
+		if ch.Enabled && !utils.ContainsSlice(ch.Title, []string{"US MLB Network", "US MLB San Diego Padres", "tigers"}) {
+			channelMap[ch] = false
+		} else if !ch.Enabled && utils.ContainsSlice(ch.Title, []string{"tigers"}) {
 			channelMap[ch] = true
 		}
 	}
 
-	counter := 0
-	for ch, enabled := range channelMap {
-		data.Set("jxt", "4")
-		data.Set("jxw", "s")
-		data.Set("s", "NO_EPG") // Playlist
-		data.Set("c", ch.ID)    // Channel ID
-		if enabled && !ch.Enabled {
-			data.Set("a", "1") // Enable channel with 1
-			slog.Info(fmt.Sprintf("IPTV: Enabling channel: %s", ch.Title))
-			counter++
-		} else if !enabled {
-			data.Set("a", "0") // Disable channel with 0
-			slog.Info(fmt.Sprintf("IPTV: Disabling channel: %s", ch.Title))
-			counter++
-		}
-
-		req, err := http.NewRequest("POST", cfg.IptvAPIAddress, strings.NewReader(data.Encode()))
-		if err != nil {
-			utils.PanicOnErr(err)
-		}
-		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-		req.Header.Set("Cookie", fmt.Sprintf("uid=%s; pass=%s", cfg.IptvUID, cfg.IptvPass))
-
-		resp, err := iptvClient.Do(req)
-		if err != nil {
-			utils.PanicOnErr(err)
-		}
-		defer resp.Body.Close()
-	}
-
-	if counter == 0 {
+	if len(channelMap) == 0 {
 		slog.Info("Exiting: IPTV: No channels to change.")
 		os.Exit(0)
+	}
+
+	for ch, enabled := range channelMap {
+		data := url.Values{
+			"jxt": {"4"},
+			"jxw": {"s"},
+			"s":   {"NO_EPG"}, // Playlist
+			"c":   {ch.ID},    // Channel ID
+		}
+		if enabled {
+			data.Set("a", "1") // Enable channel with 1
+			slog.Info(fmt.Sprintf("IPTV: Enabling channel: %s", ch.Title))
+		} else {
+			data.Set("a", "0") // Disable channel with 0
+			slog.Info(fmt.Sprintf("IPTV: Disabling channel: %s", ch.Title))
+		}
+
+		_ = i.requestJson(data)
 	}
 }
